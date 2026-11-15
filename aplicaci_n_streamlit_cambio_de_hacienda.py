@@ -1,289 +1,114 @@
+import streamlit as st
+import datetime
 import math
 import gspread
-import pandas as pd
-import streamlit as st
+import pytz
 from google.oauth2.service_account import Credentials
 
-# Constante de velocidad promedio extraída de Modelo.xlsx (50 km / 1.42857 h = 35 km/h)
-VELOCIDAD_TRASLADO_KMH = 35.0
+# Configuración inicial de la página
+st.set_page_config(page_title="Disponibilidad Traslado - Ingenio Carmelita", layout="wide")
 
-# ID de la hoja de cálculo de Google Sheets destino
-SPREADSHEET_ID = "1PS6448Q_JvjOXsdXkXbypJcBKQ0VsbeVyBTeKkILSIo"
+# Configurar el logo (Asegúrate de guardar la imagen como logo.png en la misma carpeta)
+try:
+    st.image("logo.png", width=250)
+except FileNotFoundError:
+    st.warning("Guarda el logo del Excel como 'logo.png' en la misma carpeta que este script para visualizarlo.")
 
-# Alcances requeridos para autenticar la cuenta de servicio con Google Sheets y Drive
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive",
-]
+st.title("Modelo de Disponibilidad de Traslado")
 
+# --- SECCIÓN 1: Entradas Manuales Nuevas ---
+st.header("1. Información General")
+col1, col2, col3 = st.columns(3)
+with col1:
+    hacienda_inicial = st.text_input("Hacienda inicial")
+with col2:
+    hacienda_final = st.text_input("Hacienda final")
+with col3:
+    frente = st.text_input("Frente")
 
-def formatear_hora_reloj(horas_decimales: float) -> str:
-    """Convierte horas decimales al formato horario HH:MM de Excel (ej. 2.4285 -> '02:26')."""
-    total_minutos = int(round(horas_decimales * 60)) % (24 * 60)
-    hh = total_minutos // 60
-    mm = total_minutos % 60
-    return f"{hh:02d}:{mm:02d}"
+# --- SECCIÓN 2: Variables Editables (Títulos Verdes del Excel) ---
+st.header("2. Variables Operativas")
+col_v1, col_v2, col_v3 = st.columns(3)
+with col_v1:
+    distancia_km = st.number_input("Distancia de traslado km", value=45.0, step=1.0)
+with col_v2:
+    despacho_prom = st.number_input("Despacho prom hora", value=75.0, step=1.0)
+with col_v3:
+    toneladas_disp = st.number_input("Toneladas disponibles", value=1200.0, step=10.0)
 
+# --- CÁLCULOS IDÉNTICOS AL EXCEL ---
+# Horas de caña disponibles = Toneladas / Despacho (Celda C15)
+horas_cana_disp = toneladas_disp / despacho_prom if despacho_prom > 0 else 0
 
-def formatear_numero(valor: float) -> int | float:
-    """Mantiene enteros sin decimales cuando aplica y redondea decimales a 2 cifras."""
-    redondeado = round(float(valor), 2)
-    if redondeado.is_integer():
-        return int(redondeado)
-    return redondeado
+# Tiempo de traslados horas = Distancia / 20 (Celda C19)
+tiempo_traslado_horas = distancia_km / 20
 
+# Paradas tecnicas = ENTERO((Distancia / 20) - 1) (Celda C17)
+# Se aplica un límite mínimo de 0 para evitar tiempos negativos en distancias cortas.
+paradas_tecnicas = max(0, math.floor((distancia_km / 20) - 1))
 
-def calcular_modelo_despacho(
-    distancia_km: float,
-    despacho_promedio_tnh: float,
-    tons_disponible_tn: float,
-) -> tuple[pd.DataFrame, dict]:
-    """
-    Replica exactamente las fórmulas y la tabla de 24 horas (01:00 a 00:00) de Modelo.xlsx.
-    Retorna el DataFrame completo (incluyendo fila TOTAL) y el diccionario de resumen.
-    """
-    # Tiempo de traslado en horas (formato original en horas del Excel: Distancia / 35)
-    tiempo_traslado_h = distancia_km / VELOCIDAD_TRASLADO_KMH
+# Tiempo de parada tecnica = Paradas * 10 minutos (Celda C13)
+tiempo_parada_tecnica_min = paradas_tecnicas * 10
 
-    num_horas = 24
-    horas_reloj = [formatear_hora_reloj(h) for h in range(1, num_horas + 1)]
-    tiempo_estimado_llegada = [
-        formatear_hora_reloj(h + tiempo_traslado_h) for h in range(1, num_horas + 1)
-    ]
+# Lógica de tiempos (Celdas D14, D16 y D18)
+colombia_tz = pytz.timezone('America/Bogota')
+now = datetime.datetime.now(colombia_tz)
 
-    en_proceso_anterior = [0.0] * num_horas
-    salidas_anterior = [0.0] * num_horas
-    llegando_anterior = [0.0] * num_horas
-    faltantes_fabrica = [0.0] * num_horas
+hora_final_estimada = now + datetime.timedelta(hours=(horas_cana_disp - 2))
+hora_inicio = hora_final_estimada - datetime.timedelta(hours=tiempo_traslado_horas, minutes=tiempo_parada_tecnica_min)
+hora_llegada_apoyo = hora_inicio - datetime.timedelta(minutes=30)
 
-    inicio_despacho_nueva = [""] * num_horas
-    despachadas_nueva = [0.0] * num_horas
-    inicio_llegadas_nueva = [""] * num_horas
-    en_proceso_nueva = [0.0] * num_horas
-    llegando_nueva = [0.0] * num_horas
-    total_llegando_fabrica = [0.0] * num_horas
-    meta_programada = [float(despacho_promedio_tnh)] * num_horas
-    diferencia_meta = [0.0] * num_horas
+# --- SECCIÓN 3: Resultados (Títulos Amarillos del Excel) ---
+st.header("3. Resultados de Estimación")
 
-    # 1. Cálculo de despachos por hora desde hacienda anterior y hacienda nueva
-    cambio_registrado = False
-    hora_inicio_despacho_nueva = "N/A"
-    hora_inicio_llegadas_nueva = "N/A"
+col_a1, col_a2, col_a3, col_a4 = st.columns(4)
+col_a1.metric("Tiempo de parada tecnica", f"{tiempo_parada_tecnica_min} min")
+col_a2.metric("Horas de caña disponibles", f"{horas_cana_disp:.2f}")
+col_a3.metric("Paradas tecnicas", f"{paradas_tecnicas}")
+col_a4.metric("Tiempo de traslados horas", f"{tiempo_traslado_horas:.2f}")
 
-    for i in range(num_horas):
-        if i == 0:
-            en_proceso_anterior[i] = float(tons_disponible_tn)
-        else:
-            en_proceso_anterior[i] = max(
-                0.0, en_proceso_anterior[i - 1] - salidas_anterior[i - 1]
-            )
+st.divider()
 
-        salidas_anterior[i] = min(en_proceso_anterior[i], float(despacho_promedio_tnh))
-        despachadas_nueva[i] = max(
-            0.0, float(despacho_promedio_tnh) - salidas_anterior[i]
-        )
+col_h1, col_h2, col_h3 = st.columns(3)
+col_h1.info(f"**Hora de llegada de apoyo:**\n{hora_llegada_apoyo.strftime('%Y-%m-%d %I:%M %p')}")
+col_h2.success(f"**Hora de inicio:**\n{hora_inicio.strftime('%Y-%m-%d %I:%M %p')}")
+col_h3.warning(f"**Hora final estimada:**\n{hora_final_estimada.strftime('%Y-%m-%d %I:%M %p')}")
 
-        # Marca la primera hora en que la hacienda nueva comienza a despachar
-        if despachadas_nueva[i] > 0 and not cambio_registrado:
-            inicio_despacho_nueva[i] = horas_reloj[i]
-            inicio_llegadas_nueva[i] = tiempo_estimado_llegada[i]
-            hora_inicio_despacho_nueva = horas_reloj[i]
-            hora_inicio_llegadas_nueva = tiempo_estimado_llegada[i]
-            cambio_registrado = True
-
-    # 2. Cálculo de llegadas a fábrica según el tiempo de traslado en horas
-    for j in range(num_horas):
-        hora_salida = j + 1
-        hora_llegada_slot = math.ceil(hora_salida + tiempo_traslado_h - 1e-9)
-        if 1 <= hora_llegada_slot <= num_horas:
-            idx_llegada = hora_llegada_slot - 1
-            llegando_anterior[idx_llegada] += salidas_anterior[j]
-            llegando_nueva[idx_llegada] += despachadas_nueva[j]
-
-    # 3. Saldos en proceso, faltantes por llegar y totales en fábrica
-    for i in range(num_horas):
-        if i == 0:
-            faltantes_fabrica[i] = max(
-                0.0, float(tons_disponible_tn) - llegando_anterior[i]
-            )
-            en_proceso_nueva[i] = despachadas_nueva[i] - llegando_nueva[i]
-        else:
-            faltantes_fabrica[i] = max(
-                0.0, faltantes_fabrica[i - 1] - llegando_anterior[i]
-            )
-            en_proceso_nueva[i] = (
-                en_proceso_nueva[i - 1] + despachadas_nueva[i] - llegando_nueva[i]
-            )
-
-        total_llegando_fabrica[i] = llegando_anterior[i] + llegando_nueva[i]
-        diferencia_meta[i] = total_llegando_fabrica[i] - meta_programada[i]
-
-    # Construcción del DataFrame con las columnas exactas de Modelo.xlsx
-    filas = []
-    for i in range(num_horas):
-        filas.append(
-            {
-                "HORA": horas_reloj[i],
-                "TONELADAS EN PROCESO HACIENDA ANTERIOR": formatear_numero(
-                    en_proceso_anterior[i]
-                ),
-                "TONS SALIDAS": formatear_numero(salidas_anterior[i]),
-                "TONS QUE VAN LLEGANDO": formatear_numero(llegando_anterior[i]),
-                "TN FALTANTES POR LLEGADA A FABRICA": formatear_numero(
-                    faltantes_fabrica[i]
-                ),
-                "TIEMPO ESTIMADO DE LLEGADA": tiempo_estimado_llegada[i],
-                "INICIO DE DESPACHO HDA NUEVA": inicio_despacho_nueva[i],
-                "TONS DESPACHADAS HDA NUEVA": formatear_numero(despachadas_nueva[i]),
-                "INICIO LLEGADAS HDA NUEVA": inicio_llegadas_nueva[i],
-                "TONS EN PROCESO HDA NUEVA": formatear_numero(en_proceso_nueva[i]),
-                "TONS QUE VAN LLEGANDO HDA NUEVA": formatear_numero(llegando_nueva[i]),
-                "TN TOTAL QUE VAN LLEGANDO FABRICA": formatear_numero(
-                    total_llegando_fabrica[i]
-                ),
-                "DESPACHO PROMEDIO (TN/H)": formatear_numero(meta_programada[i]),
-                "DIFERENCIA": formatear_numero(diferencia_meta[i]),
-            }
-        )
-
-    # Fila de totales igual a la fila final de Modelo.xlsx
-    fila_total = {
-        "HORA": "TOTAL",
-        "TONELADAS EN PROCESO HACIENDA ANTERIOR": "",
-        "TONS SALIDAS": formatear_numero(sum(salidas_anterior)),
-        "TONS QUE VAN LLEGANDO": formatear_numero(sum(llegando_anterior)),
-        "TN FALTANTES POR LLEGADA A FABRICA": "",
-        "TIEMPO ESTIMADO DE LLEGADA": "",
-        "INICIO DE DESPACHO HDA NUEVA": "",
-        "TONS DESPACHADAS HDA NUEVA": formatear_numero(sum(despachadas_nueva)),
-        "INICIO LLEGADAS HDA NUEVA": "",
-        "TONS EN PROCESO HDA NUEVA": "",
-        "TONS QUE VAN LLEGANDO HDA NUEVA": formatear_numero(sum(llegando_nueva)),
-        "TN TOTAL QUE VAN LLEGANDO FABRICA": formatear_numero(
-            sum(total_llegando_fabrica)
-        ),
-        "DESPACHO PROMEDIO (TN/H)": formatear_numero(sum(meta_programada)),
-        "DIFERENCIA": formatear_numero(sum(diferencia_meta)),
-    }
-
-    df_resultado = pd.DataFrame(filas + [fila_total])
-
-    resumen = {
-        "tiempo_traslado_h": round(tiempo_traslado_h, 1),
-        "inicio_despacho_nueva": hora_inicio_despacho_nueva,
-        "inicio_llegadas_nueva": hora_inicio_llegadas_nueva,
-        "total_llegadas_fabrica": formatear_numero(sum(total_llegando_fabrica)),
-        "total_programado": formatear_numero(sum(meta_programada)),
-        "diferencia_total": formatear_numero(sum(diferencia_meta)),
-    }
-
-    return df_resultado, resumen
-
-
-def enviar_a_google_sheets(datos_fila: dict) -> None:
-    """Conecta con Google Sheets mediante cuenta de servicio en st.secrets y agrega la fila."""
-    credenciales_info = dict(st.secrets["gcp_service_account"])
-    credenciales = Credentials.from_service_account_info(
-        credenciales_info, scopes=SCOPES
-    )
-    cliente = gspread.authorize(credenciales)
-    hoja = cliente.open_by_key(SPREADSHEET_ID).sheet1
-
-    # Si la hoja está vacía, inserta primero los encabezados
-    if len(hoja.get_all_values()) == 0:
-        hoja.append_row(list(datos_fila.keys()), value_input_option="USER_ENTERED")
-
-    hoja.append_row(list(datos_fila.values()), value_input_option="USER_ENTERED")
-
-
-def main() -> None:
-    st.set_page_config(
-        page_title="Cambio de Hacienda - Modelo de Despacho",
-        layout="wide",
-    )
-
-    st.title("Cambio de Hacienda — Modelo de Despacho y Traslado")
-
-    # Sección de entrada de haciendas y parámetros del modelo (valores base de Modelo.xlsx)
-    col_h1, col_h2 = st.columns(2)
-    with col_h1:
-        hacienda_inicio = st.text_input("Hacienda de inicio", value="")
-    with col_h2:
-        hacienda_final = st.text_input("Hacienda final", value="")
-
-    col_p1, col_p2, col_p3 = st.columns(3)
-    with col_p1:
-        distancia_km = st.number_input(
-            "Distancia del traslado (KM)",
-            min_value=0.0,
-            value=50.0,
-            step=1.0,
-        )
-    with col_p2:
-        despacho_promedio_tnh = st.number_input(
-            "Despacho promedio por hora (TN/H)",
-            min_value=0.0,
-            value=19.0,
-            step=1.0,
-        )
-    with col_p3:
-        tons_disponible_tn = st.number_input(
-            "Toneladas disponibles (TN)",
-            min_value=0.0,
-            value=98.0,
-            step=1.0,
-        )
-
-    # Recálculo automático al modificar cualquiera de los parámetros
-    df_modelo, resumen = calcular_modelo_despacho(
-        distancia_km=distancia_km,
-        despacho_promedio_tnh=despacho_promedio_tnh,
-        tons_disponible_tn=tons_disponible_tn,
-    )
-
-    # Indicadores principales conservando unidades originales (H, HH:MM, TN)
-    st.divider()
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Tiempo de traslado (H)", f"{resumen['tiempo_traslado_h']} H")
-    m2.metric("Inicio despacho Hda. Nueva", resumen["inicio_despacho_nueva"])
-    m3.metric("Inicio llegadas Hda. Nueva", resumen["inicio_llegadas_nueva"])
-    m4.metric(
-        "Total llegadas a fábrica (TN)",
-        f"{resumen['total_llegadas_fabrica']} TN",
-        delta=f"{resumen['diferencia_total']} TN vs meta",
-    )
-
-    # Tabla completa del modelo de 24 horas
-    st.subheader("Detalle Horario del Cambio de Hacienda")
-    st.dataframe(df_modelo, use_container_width=True, hide_index=True)
-
-    # Gráfico de comportamiento de llegadas a fábrica (replicando el gráfico de Modelo.xlsx)
-    st.subheader("Comportamiento de Llegadas a Fábrica (TN/H)")
-    df_grafico = df_modelo.iloc[:-1].set_index("HORA")[
-        ["TN TOTAL QUE VAN LLEGANDO FABRICA", "DESPACHO PROMEDIO (TN/H)"]
-    ]
-    st.line_chart(df_grafico)
-
-    # Envío de parámetros y haciendas a Google Sheets
-    st.divider()
-    if st.button("Enviar datos a Google Sheets", type="primary"):
-        registro = {
-            "Hacienda de Inicio": hacienda_inicio,
-            "Hacienda Final": hacienda_final,
-            "Distancia del Traslado (KM)": formatear_numero(distancia_km),
-            "Tiempo de Traslado (H)": resumen["tiempo_traslado_h"],
-            "Despacho Promedio (TN/H)": formatear_numero(despacho_promedio_tnh),
-            "Tons Disponible (TN)": formatear_numero(tons_disponible_tn),
-            "Inicio Despacho Hda Nueva": resumen["inicio_despacho_nueva"],
-            "Inicio Llegadas Hda Nueva": resumen["inicio_llegadas_nueva"],
-            "Total Llegadas Fabrica (TN)": resumen["total_llegadas_fabrica"],
-        }
-        try:
-            enviar_a_google_sheets(registro)
-            st.success("Datos enviados correctamente a Google Sheets.")
-        except Exception as error:
-            st.error(f"Error al enviar los datos a Google Sheets: {error}")
-
-
-if __name__ == "__main__":
-    main()
+# --- SECCIÓN 4: Enviar a Google Sheets ---
+st.header("4. Guardar Historial")
+if st.button("Enviar información a Google Sheets"):
+    try:
+        # Autenticación con Google Sheets usando los secretos de Streamlit
+        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+        client = gspread.authorize(creds)
+        
+        # Enlace proporcionado
+        sheet_url = "https://docs.google.com/spreadsheets/d/1PS6448Q_JvjOXsdXkXbypJcBKQ0VsbeVyBTeKkILSIo/edit?usp=sharing"
+        sheet = client.open_by_url(sheet_url).sheet1
+        
+        # Construcción de la fila de datos
+        row_data = [
+            now.strftime('%Y-%m-%d %H:%M:%S'),
+            hacienda_inicial,
+            hacienda_final,
+            frente,
+            distancia_km,
+            despacho_prom,
+            toneladas_disp,
+            tiempo_parada_tecnica_min,
+            horas_cana_disp,
+            paradas_tecnicas,
+            tiempo_traslado_horas,
+            hora_llegada_apoyo.strftime('%Y-%m-%d %H:%M:%S'),
+            hora_inicio.strftime('%Y-%m-%d %H:%M:%S'),
+            hora_final_estimada.strftime('%Y-%m-%d %H:%M:%S')
+        ]
+        
+        sheet.append_row(row_data)
+        st.success("¡Datos enviados y guardados en Google Sheets correctamente!")
+        
+    except KeyError:
+        st.error("Error: No se encontraron las credenciales de Google. Verifica tu archivo secrets.toml o la configuración de secretos en Streamlit Cloud.")
+    except Exception as e:
+        st.error(f"Se produjo un error al conectar con Google Sheets: {e}")
