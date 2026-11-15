@@ -1,8 +1,8 @@
- import streamlit as st
+import streamlit as st
 import datetime
 import math
-import requests
-import pytz
+import json
+import urllib.request
 
 # Configuración inicial de la página
 st.set_page_config(page_title="Disponibilidad Traslado - Ingenio Carmelita", layout="wide")
@@ -10,7 +10,7 @@ st.set_page_config(page_title="Disponibilidad Traslado - Ingenio Carmelita", lay
 # Configurar el logo
 try:
     st.image("logo.png", width=250)
-except FileNotFoundError:
+except Exception:
     st.warning("No se encontró el archivo 'logo.png'.")
 
 st.title("Modelo de Disponibilidad de Traslado")
@@ -41,7 +41,8 @@ tiempo_traslado_horas = distancia_km / 20
 paradas_tecnicas = max(0, math.floor((distancia_km / 20) - 1))
 tiempo_parada_tecnica_min = paradas_tecnicas * 10
 
-colombia_tz = pytz.timezone('America/Bogota')
+# Hora oficial de Colombia (UTC-5) usando librería nativa
+colombia_tz = datetime.timezone(datetime.timedelta(hours=-5))
 now = datetime.datetime.now(colombia_tz)
 
 hora_final_estimada = now + datetime.timedelta(hours=(horas_cana_disp - 2))
@@ -88,10 +89,17 @@ if st.button("Enviar información a Google Sheets"):
     
     with st.spinner("Guardando datos en Google Sheets..."):
         try:
-            response = requests.post(webhook_url, json={"row": row_data})
-            if response.status_code == 200:
-                st.success("¡Datos enviados y guardados en Google Sheets correctamente!")
-            else:
-                st.error(f"Error al guardar los datos. Código de respuesta: {response.status_code}")
+            payload = json.dumps({"row": row_data}).encode("utf-8")
+            req = urllib.request.Request(
+                webhook_url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=15) as response:
+                if response.status == 200:
+                    st.success("¡Datos enviados y guardados en Google Sheets correctamente!")
+                else:
+                    st.error(f"Error al guardar los datos. Código de respuesta: {response.status}")
         except Exception as e:
             st.error(f"Se produjo un error de conexión: {e}")
