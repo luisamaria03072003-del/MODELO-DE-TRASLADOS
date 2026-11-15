@@ -1,18 +1,17 @@
-import streamlit as st
+ import streamlit as st
 import datetime
 import math
-import gspread
+import requests
 import pytz
-from google.oauth2.service_account import Credentials
 
 # Configuración inicial de la página
 st.set_page_config(page_title="Disponibilidad Traslado - Ingenio Carmelita", layout="wide")
 
-# Configurar el logo (Asegúrate de guardar la imagen como logo.png en la misma carpeta)
+# Configurar el logo
 try:
     st.image("logo.png", width=250)
 except FileNotFoundError:
-    st.warning("Guarda el logo del Excel como 'logo.png' en la misma carpeta que este script para visualizarlo.")
+    st.warning("No se encontró el archivo 'logo.png'.")
 
 st.title("Modelo de Disponibilidad de Traslado")
 
@@ -30,27 +29,18 @@ with col3:
 st.header("2. Variables Operativas")
 col_v1, col_v2, col_v3 = st.columns(3)
 with col_v1:
-    distancia_km = st.number_input("Distancia de traslado km", value=45.0, step=1.0)
+    distancia_km = st.number_input("Distancia de traslado km", min_value=0.0, value=45.0, step=1.0)
 with col_v2:
-    despacho_prom = st.number_input("Despacho prom hora", value=75.0, step=1.0)
+    despacho_prom = st.number_input("Despacho prom hora", min_value=1.0, value=75.0, step=1.0)
 with col_v3:
-    toneladas_disp = st.number_input("Toneladas disponibles", value=1200.0, step=10.0)
+    toneladas_disp = st.number_input("Toneladas disponibles", min_value=0.0, value=1200.0, step=10.0)
 
 # --- CÁLCULOS IDÉNTICOS AL EXCEL ---
-# Horas de caña disponibles = Toneladas / Despacho (Celda C15)
-horas_cana_disp = toneladas_disp / despacho_prom if despacho_prom > 0 else 0
-
-# Tiempo de traslados horas = Distancia / 20 (Celda C19)
+horas_cana_disp = toneladas_disp / despacho_prom
 tiempo_traslado_horas = distancia_km / 20
-
-# Paradas tecnicas = ENTERO((Distancia / 20) - 1) (Celda C17)
-# Se aplica un límite mínimo de 0 para evitar tiempos negativos en distancias cortas.
 paradas_tecnicas = max(0, math.floor((distancia_km / 20) - 1))
-
-# Tiempo de parada tecnica = Paradas * 10 minutos (Celda C13)
 tiempo_parada_tecnica_min = paradas_tecnicas * 10
 
-# Lógica de tiempos (Celdas D14, D16 y D18)
 colombia_tz = pytz.timezone('America/Bogota')
 now = datetime.datetime.now(colombia_tz)
 
@@ -77,38 +67,31 @@ col_h3.warning(f"**Hora final estimada:**\n{hora_final_estimada.strftime('%Y-%m-
 # --- SECCIÓN 4: Enviar a Google Sheets ---
 st.header("4. Guardar Historial")
 if st.button("Enviar información a Google Sheets"):
-    try:
-        # Autenticación con Google Sheets usando los secretos de Streamlit
-        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
-        client = gspread.authorize(creds)
-        
-        # Enlace proporcionado
-        sheet_url = "https://docs.google.com/spreadsheets/d/1PS6448Q_JvjOXsdXkXbypJcBKQ0VsbeVyBTeKkILSIo/edit?usp=sharing"
-        sheet = client.open_by_url(sheet_url).sheet1
-        
-        # Construcción de la fila de datos
-        row_data = [
-            now.strftime('%Y-%m-%d %H:%M:%S'),
-            hacienda_inicial,
-            hacienda_final,
-            frente,
-            distancia_km,
-            despacho_prom,
-            toneladas_disp,
-            tiempo_parada_tecnica_min,
-            horas_cana_disp,
-            paradas_tecnicas,
-            tiempo_traslado_horas,
-            hora_llegada_apoyo.strftime('%Y-%m-%d %H:%M:%S'),
-            hora_inicio.strftime('%Y-%m-%d %H:%M:%S'),
-            hora_final_estimada.strftime('%Y-%m-%d %H:%M:%S')
-        ]
-        
-        sheet.append_row(row_data)
-        st.success("¡Datos enviados y guardados en Google Sheets correctamente!")
-        
-    except KeyError:
-        st.error("Error: No se encontraron las credenciales de Google. Verifica tu archivo secrets.toml o la configuración de secretos en Streamlit Cloud.")
-    except Exception as e:
-        st.error(f"Se produjo un error al conectar con Google Sheets: {e}")
+    webhook_url = "https://script.google.com/macros/s/AKfycbzyR-uC9KdNR3_Anyd6mwMvvQSqE1vkZEjwxtZdP9xKfiQorVj3i82oFOaS5wxMvk3W/exec"
+    
+    row_data = [
+        now.strftime('%Y-%m-%d %H:%M:%S'),
+        hacienda_inicial,
+        hacienda_final,
+        frente,
+        distancia_km,
+        despacho_prom,
+        toneladas_disp,
+        tiempo_parada_tecnica_min,
+        round(horas_cana_disp, 2),
+        paradas_tecnicas,
+        round(tiempo_traslado_horas, 2),
+        hora_llegada_apoyo.strftime('%Y-%m-%d %H:%M:%S'),
+        hora_inicio.strftime('%Y-%m-%d %H:%M:%S'),
+        hora_final_estimada.strftime('%Y-%m-%d %H:%M:%S')
+    ]
+    
+    with st.spinner("Guardando datos en Google Sheets..."):
+        try:
+            response = requests.post(webhook_url, json={"row": row_data})
+            if response.status_code == 200:
+                st.success("¡Datos enviados y guardados en Google Sheets correctamente!")
+            else:
+                st.error(f"Error al guardar los datos. Código de respuesta: {response.status_code}")
+        except Exception as e:
+            st.error(f"Se produjo un error de conexión: {e}")
