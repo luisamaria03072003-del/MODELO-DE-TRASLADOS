@@ -1,5 +1,4 @@
  Plaintext
 streamlit
-gspread
-google-auth
+requests
 pytz
