@@ -9,37 +9,54 @@ import os
 # Configuración inicial de la página
 st.set_page_config(
     page_title="Disponibilidad de Traslado - Ingenio Carmelita",
-    page_icon="🌿",
+    page_icon="🚜",
     layout="wide"
 )
 
-# --- ESTILOS CSS ---
+# --- ESTILOS CSS COMPACTOS PARA PANTALLA COMPLETA DE PC ---
 st.markdown("""
 <style>
-    .stApp {
-        background-color: #F4F7F2;
+    /* Eliminar espacios muertos superiores/inferiores de Streamlit */
+    .block-container {
+        padding-top: 1.1rem !important;
+        padding-bottom: 0.6rem !important;
+        padding-left: 1.8rem !important;
+        padding-right: 1.8rem !important;
+        max-width: 1400px;
     }
+    header[data-testid="stHeader"] {
+        height: 2.2rem;
+        background: transparent;
+    }
+    .stApp {
+        background-color: #F3F6F1;
+    }
+    /* Compactar separación vertical entre widgets */
+    div[data-testid="stVerticalBlock"] > div {
+        gap: 0.42rem;
+    }
+    /* Encabezado principal compacto */
     .header-banner {
         background: linear-gradient(135deg, #14452F 0%, #246A3E 58%, #388E3C 100%);
-        padding: 16px 26px;
-        border-radius: 16px;
+        padding: 10px 22px;
+        border-radius: 14px;
         color: white;
-        box-shadow: 0 6px 18px rgba(20, 69, 47, 0.22);
-        margin-bottom: 20px;
+        box-shadow: 0 4px 14px rgba(20, 69, 47, 0.20);
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 20px;
-        border-bottom: 5px solid #FBC02D;
+        gap: 16px;
+        border-bottom: 4px solid #FBC02D;
     }
     .header-logo-wrap {
         background-color: #FFFFFF;
-        padding: 10px 18px;
-        border-radius: 12px;
+        padding: 6px 14px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
         flex-shrink: 0;
     }
     .header-text {
@@ -48,119 +65,169 @@ st.markdown("""
     }
     .header-text h1 {
         color: #FFFFFF;
-        font-size: 1.95rem;
+        font-size: 1.55rem;
         font-weight: 800;
         margin: 0;
-        line-height: 1.2;
+        line-height: 1.15;
         letter-spacing: 0.4px;
     }
     .header-text p {
         color: #E8F5E9;
-        font-size: 1.0rem;
-        margin: 6px 0 0 0;
+        font-size: 0.88rem;
+        margin: 3px 0 0 0;
         font-weight: 500;
     }
-    .header-canitas {
+    .header-deco {
         flex-shrink: 0;
         display: flex;
         align-items: center;
+        gap: 8px;
     }
+    /* Títulos de sección estilo Excel compactos */
     .sec-header-info {
         background-color: #1B5E20;
         color: #FFFFFF;
-        padding: 9px 15px;
-        border-radius: 10px 10px 0 0;
+        padding: 6px 12px;
+        border-radius: 8px 8px 0 0;
         font-weight: 700;
-        font-size: 1.0rem;
+        font-size: 0.9rem;
     }
     .sec-header-verde {
         background-color: #2E7D32;
         color: #FFFFFF;
-        padding: 9px 15px;
-        border-radius: 10px 10px 0 0;
+        padding: 6px 12px;
+        border-radius: 8px 8px 0 0;
         font-weight: 700;
-        font-size: 1.0rem;
-        border-bottom: 3px solid #A5D6A7;
+        font-size: 0.9rem;
+        border-bottom: 2px solid #A5D6A7;
     }
     .sec-header-amarillo {
         background-color: #FFF176;
         color: #1F2937;
-        padding: 9px 15px;
-        border-radius: 10px 10px 0 0;
+        padding: 6px 12px;
+        border-radius: 8px 8px 0 0;
         font-weight: 800;
-        font-size: 1.0rem;
-        border-bottom: 3px solid #FBC02D;
+        font-size: 0.9rem;
+        border-bottom: 2px solid #FBC02D;
     }
+    /* Compactar etiquetas de inputs */
+    div[data-testid="stWidgetLabel"] p {
+        font-size: 0.82rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 1px !important;
+    }
+    /* Tarjetas de resultados amarillas compactas */
     .kpi-card {
         background-color: #FFFFFF;
-        border-radius: 12px;
+        border-radius: 10px;
         border: 1px solid #E5E7EB;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         overflow: hidden;
-        margin-bottom: 12px;
+        margin-bottom: 6px;
         text-align: center;
     }
     .kpi-title-yellow {
         background-color: #FFFF66;
         color: #111827;
         font-weight: 700;
-        font-size: 0.9rem;
-        padding: 7px 10px;
+        font-size: 0.81rem;
+        padding: 5px 8px;
         border-bottom: 1px solid #E6E600;
     }
     .kpi-value {
-        font-size: 1.55rem;
+        font-size: 1.32rem;
         font-weight: 800;
         color: #14452F;
-        padding: 12px 10px 2px 10px;
+        padding: 7px 8px 1px 8px;
+        line-height: 1.2;
     }
     .kpi-sub {
-        font-size: 0.8rem;
+        font-size: 0.73rem;
         color: #6B7280;
-        padding-bottom: 10px;
+        padding-bottom: 6px;
     }
+    /* Tarjetas de horarios compactas */
     .time-card {
         background-color: #FFFFFF;
-        border-radius: 12px;
+        border-radius: 10px;
         border: 1px solid #E5E7EB;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         overflow: hidden;
         text-align: center;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
     }
     .time-value {
-        font-size: 1.25rem;
+        font-size: 1.12rem;
         font-weight: 800;
         color: #111827;
-        padding: 12px 8px 3px 8px;
+        padding: 7px 6px 2px 6px;
+        line-height: 1.2;
     }
     .time-date {
-        font-size: 0.84rem;
+        font-size: 0.75rem;
         font-weight: 600;
         color: #2E7D32;
-        padding-bottom: 10px;
+        padding-bottom: 6px;
     }
+    /* Botón principal compacto */
     div.stButton > button {
         background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%);
         color: white;
         font-weight: 700;
-        font-size: 1.02rem;
-        padding: 0.6rem 1.1rem;
-        border-radius: 10px;
+        font-size: 0.92rem;
+        padding: 0.42rem 0.9rem;
+        border-radius: 8px;
         border: none;
         width: 100%;
-        box-shadow: 0 4px 10px rgba(27, 94, 32, 0.25);
+        box-shadow: 0 3px 8px rgba(27, 94, 32, 0.22);
     }
     div.stButton > button:hover {
         background: linear-gradient(135deg, #14452F 0%, #1B5E20 100%);
         color: #FFFF66;
     }
+    /* Franja decorativa sutil inferior de maquinaria agrícola */
+    .machinery-footer {
+        margin-top: 6px;
+        padding: 4px 14px;
+        background: linear-gradient(90deg, rgba(20,69,47,0.05) 0%, rgba(46,125,50,0.10) 50%, rgba(20,69,47,0.05) 100%);
+        border-radius: 10px;
+        border-bottom: 2px solid #81C784;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        opacity: 0.92;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SVG DE CAÑITAS DE AZÚCAR ---
-SVG_CANITAS = """
-<svg width="74" height="86" viewBox="0 0 90 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+# --- ILUSTRACIONES VECTORIALES SUTILES (MAQUINARIA AGRÍCOLA + CAÑITAS) ---
+SVG_TRACTOR_HEADER = """
+<svg width="96" height="58" viewBox="0 0 130 78" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="66" cy="72" rx="56" ry="3.5" fill="#0D3322" fill-opacity="0.35"/>
+  <rect x="6" y="34" width="42" height="24" rx="3" fill="#A5D6A7" stroke="#1B5E20" stroke-width="1.8"/>
+  <line x1="16" y1="34" x2="16" y2="58" stroke="#2E7D32" stroke-width="1.5"/>
+  <line x1="27" y1="34" x2="27" y2="58" stroke="#2E7D32" stroke-width="1.5"/>
+  <line x1="38" y1="34" x2="38" y2="58" stroke="#2E7D32" stroke-width="1.5"/>
+  <path d="M9 34 Q18 24 28 31 Q37 23 46 34 Z" fill="#DCE775"/>
+  <line x1="48" y1="54" x2="58" y2="54" stroke="#E8F5E9" stroke-width="2.5"/>
+  <circle cx="17" cy="62" r="7.5" fill="#263238" stroke="#E8F5E9" stroke-width="1.5"/>
+  <circle cx="17" cy="62" r="3" fill="#FBC02D"/>
+  <circle cx="37" cy="62" r="7.5" fill="#263238" stroke="#E8F5E9" stroke-width="1.5"/>
+  <circle cx="37" cy="62" r="3" fill="#FBC02D"/>
+  <path d="M62 20 H83 L87 38 H60 Z" fill="#E8F5E9" stroke="#1B5E20" stroke-width="1.8"/>
+  <rect x="65" y="23" width="15" height="12" rx="1.5" fill="#81C784"/>
+  <rect x="59" y="16" width="27" height="4" rx="2" fill="#FBC02D"/>
+  <path d="M85 35 H111 C114 35 116 37 116 40 V52 H85 Z" fill="#FBC02D" stroke="#1B5E20" stroke-width="1.6"/>
+  <path d="M96 35 V23 L100 20" stroke="#E8F5E9" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="71" cy="56" r="14" fill="#263238" stroke="#E8F5E9" stroke-width="2"/>
+  <circle cx="71" cy="56" r="6" fill="#FBC02D"/>
+  <circle cx="107" cy="60" r="9.5" fill="#263238" stroke="#E8F5E9" stroke-width="1.8"/>
+  <circle cx="107" cy="60" r="4" fill="#FBC02D"/>
+</svg>
+"""
+
+SVG_CANITAS_COMPACT = """
+<svg width="48" height="58" viewBox="0 0 90 110" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M32 38 C14 28, 6 34, 4 44 C14 38, 24 38, 32 43 Z" fill="#A5D6A7"/>
   <path d="M32 62 C12 54, 4 62, 2 72 C13 64, 23 64, 32 68 Z" fill="#81C784"/>
   <rect x="30" y="14" width="9" height="86" rx="4" fill="#C5E1A5" stroke="#558B2F" stroke-width="1.5"/>
@@ -175,6 +242,35 @@ SVG_CANITAS = """
   <line x1="48" y1="28" x2="58" y2="28" stroke="#33691E" stroke-width="2.5"/>
   <line x1="48" y1="50" x2="58" y2="50" stroke="#33691E" stroke-width="2.5"/>
   <line x1="48" y1="72" x2="58" y2="72" stroke="#33691E" stroke-width="2.5"/>
+</svg>
+"""
+
+SVG_COSECHADORA_MINI = """
+<svg width="86" height="32" viewBox="0 0 140 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="34" y="16" width="54" height="22" rx="4" fill="#2E7D32"/>
+  <path d="M66 6 H84 L88 18 H64 Z" fill="#66BB6A"/>
+  <path d="M36 22 L12 8 L16 5 L40 18 Z" fill="#1B5E20"/>
+  <path d="M88 24 L112 36 L112 43 L88 38 Z" fill="#FBC02D"/>
+  <rect x="40" y="37" width="42" height="10" rx="5" fill="#1F2937"/>
+  <circle cx="46" cy="42" r="3" fill="#FBC02D"/>
+  <circle cx="61" cy="42" r="3" fill="#FBC02D"/>
+  <circle cx="76" cy="42" r="3" fill="#FBC02D"/>
+</svg>
+"""
+
+SVG_CAMABAJA_MINI = """
+<svg width="110" height="32" viewBox="0 0 180 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M128 16 H150 L158 28 V40 H128 Z" fill="#1B5E20"/>
+  <rect x="136" y="19" width="12" height="9" rx="1.5" fill="#A5D6A7"/>
+  <path d="M14 38 H108 L118 30 H128 V36 L114 42 H14 Z" fill="#374151"/>
+  <rect x="44" y="20" width="32" height="13" rx="2.5" fill="#FBC02D"/>
+  <rect x="48" y="11" width="14" height="10" rx="1.5" fill="#2E7D32"/>
+  <circle cx="52" cy="34" r="6" fill="#1F2937"/>
+  <circle cx="71" cy="35" r="4.5" fill="#1F2937"/>
+  <circle cx="24" cy="44" r="5" fill="#111827"/>
+  <circle cx="37" cy="44" r="5" fill="#111827"/>
+  <circle cx="122" cy="44" r="5" fill="#111827"/>
+  <circle cx="148" cy="44" r="5" fill="#111827"/>
 </svg>
 """
 
@@ -200,10 +296,10 @@ def fmt_excel_hms(days_val):
     seconds = abs_sec % 60
     return f"{sign}{hours}:{minutes:02d}:{seconds:02d}"
 
-# --- ENCABEZADO CON LOGO ACOMPAÑANDO EL TÍTULO ---
+# --- ENCABEZADO CON LOGO + TÍTULO + TRACTOR Y CAÑITAS ---
 logo_b64 = get_base64_image("logo.png")
 logo_html = (
-    f'<div class="header-logo-wrap"><img src="data:image/png;base64,{logo_b64}" style="height: 82px; width: auto;" alt="Ingenio Carmelita"></div>'
+    f'<div class="header-logo-wrap"><img src="data:image/png;base64,{logo_b64}" style="height: 58px; width: auto;" alt="Ingenio Carmelita"></div>'
     if logo_b64 else ""
 )
 
@@ -211,36 +307,43 @@ st.markdown(f"""
 <div class="header-banner">
     {logo_html}
     <div class="header-text">
-        <h1>DISPONIBILIDAD TRASLADO</h1>
-        <p>Modelo Operativo de Cosecha y Transporte • Ingenio Carmelita</p>
+        <h1>DISPONIBILIDAD TRASLADO DE MAQUINARIA</h1>
+        <p>Logística de Maquinaria Agrícola, Cosecha y Transporte • Ingenio Carmelita</p>
     </div>
-    <div class="header-canitas">{SVG_CANITAS}</div>
+    <div class="header-deco">
+        {SVG_TRACTOR_HEADER}
+        {SVG_CANITAS_COMPACT}
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- DISTRIBUCIÓN PRINCIPAL EN 2 COLUMNAS ---
-col_izq, col_der = st.columns([1, 1.35], gap="large")
+# --- DISTRIBUCIÓN PRINCIPAL EN 2 COLUMNAS COMPACTAS ---
+col_izq, col_der = st.columns([1.05, 1.35], gap="medium")
 
 with col_izq:
     st.markdown('<div class="sec-header-info">📋 1. Información General</div>', unsafe_allow_html=True)
     with st.container(border=True):
-        c_h1, c_h2 = st.columns(2)
+        c_h1, c_h2, c_h3 = st.columns(3)
         with c_h1:
-            hacienda_inicial = st.text_input("Hacienda inicial", placeholder="Ej. La Primavera")
+            hacienda_inicial = st.text_input("Hacienda inicial", placeholder="Ej. Primavera")
         with c_h2:
             hacienda_final = st.text_input("Hacienda final", placeholder="Ej. El Rosario")
-        frente = st.text_input("Frente", placeholder="Ej. Frente 3")
+        with c_h3:
+            frente = st.text_input("Frente", placeholder="Ej. Frente 3")
 
     st.markdown('<div class="sec-header-verde">🟢 2. Variables Editables</div>', unsafe_allow_html=True)
     with st.container(border=True):
-        distancia_km = st.number_input("Distancia traslado (km)", min_value=0.0, value=45.0, step=1.0, format="%.2f")
-        despacho_prom = st.number_input("Despacho prom/hora", min_value=0.1, value=75.0, step=1.0, format="%.2f")
+        v1, v2 = st.columns(2)
+        with v1:
+            distancia_km = st.number_input("Distancia traslado (km)", min_value=0.0, value=45.0, step=1.0, format="%.2f")
+        with v2:
+            despacho_prom = st.number_input("Despacho prom/hora", min_value=0.1, value=75.0, step=1.0, format="%.2f")
         toneladas_disp = st.number_input("Toneladas disponibles", min_value=0.0, value=1200.0, step=10.0, format="%.2f")
 
     colombia_tz = datetime.timezone(datetime.timedelta(hours=-5))
     now_live = datetime.datetime.now(colombia_tz)
 
-    usar_hora_manual = st.checkbox("Fijar hora base manualmente (para comparar exacto con Excel)", value=False)
+    usar_hora_manual = st.checkbox("Fijar hora base manualmente (comparar con Excel)", value=False)
     if usar_hora_manual:
         c_d, c_t = st.columns(2)
         with c_d:
@@ -252,36 +355,24 @@ with col_izq:
         now = now_live
         c_hora, c_btn = st.columns([2.2, 1])
         with c_hora:
-            st.caption(f"🕒 **Hora actual (NOW):** {now.strftime('%d/%m/%Y %I:%M %p')}")
+            st.caption(f"🕒 **Hora base (NOW):** {now.strftime('%d/%m/%Y %I:%M %p')}")
         with c_btn:
             if st.button("🔄 Actualizar"):
                 st.rerun()
 
-# --- CÁLCULOS 100% IDÉNTICOS A LA HOJA 2 DEL EXCEL ---
-# Celda C15: =B18/B16 (Horas de caña disponibles - en horas decimales)
+# --- CÁLCULOS 100% IDÉNTICOS A LA HOJA 2 DEL EXCEL (SIN MODIFICAR) ---
 horas_cana_disp = toneladas_disp / despacho_prom
-
-# Celda C17: =INT((B14/20)-1) (Paradas tecnicas)
 paradas_tecnicas = math.floor((distancia_km / 20.0) - 1.0)
-
-# Celda C19: =B14/20 (Tiempo de traslado horas - en horas decimales)
 tiempo_traslado_horas = distancia_km / 20.0
-
-# Celda C13: =((C17*10)/(24*60)) (Tiempo de traslado (minutos) - expresado en días, formato h:mm:ss)
 tiempo_traslado_min_dias = (paradas_tecnicas * 10.0) / (24.0 * 60.0)
 tiempo_traslado_hms = fmt_excel_hms(tiempo_traslado_min_dias)
 
-# Celda D18: =NOW()+(C15-2)/24 (Hora final estimada)
 hora_final_estimada = now + datetime.timedelta(days=(horas_cana_disp - 2.0) / 24.0)
-
-# Celda D16: =D18-C19/24-C13 (Hora de inicio: resta horas de traslado C19/24 y paradas C13)
 hora_inicio = (
     hora_final_estimada
     - datetime.timedelta(days=tiempo_traslado_horas / 24.0)
     - datetime.timedelta(days=tiempo_traslado_min_dias)
 )
-
-# Celda D14: =D16-1/48 (Hora llegada apoyo: 30 minutos antes de la hora de inicio)
 hora_llegada_apoyo = hora_inicio - datetime.timedelta(days=1.0 / 48.0)
 
 with col_der:
@@ -293,7 +384,7 @@ with col_der:
             <div class="kpi-card">
                 <div class="kpi-title-yellow">Tiempo de traslado (minutos)</div>
                 <div class="kpi-value">{tiempo_traslado_hms}</div>
-                <div class="kpi-sub">Formato Excel h:mm:ss ({paradas_tecnicas * 10} min)</div>
+                <div class="kpi-sub">Formato h:mm:ss ({paradas_tecnicas * 10} min)</div>
             </div>
             """, unsafe_allow_html=True)
         with r1_c2:
@@ -385,3 +476,14 @@ with col_der:
                             st.error(f"Error al guardar los datos. Código: {response.status}")
                 except Exception as e:
                     st.error(f"Error de conexión con Google Sheets: {e}")
+
+# --- FRANJA DECORATIVA SUTIL DE MAQUINARIA AGRÍCOLA ---
+st.markdown(f"""
+<div class="machinery-footer">
+    {SVG_COSECHADORA_MINI}
+    <span style="font-size: 0.78rem; color: #2E7D32; font-weight: 600;">
+        🌿 Traslado de Equipos y Cosechadoras • Ingenio Carmelita S.A.
+    </span>
+    {SVG_CAMABAJA_MINI}
+</div>
+""", unsafe_allow_html=True)
