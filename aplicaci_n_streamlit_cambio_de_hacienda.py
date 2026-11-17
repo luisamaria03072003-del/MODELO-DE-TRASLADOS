@@ -382,3 +382,4 @@ with col_der:
                             st.error(f"Error al guardar los datos. Código: {response.status}")
                 except Exception as e:
                     st.error(f"Error de conexión con Google Sheets: {e}")
+                 
