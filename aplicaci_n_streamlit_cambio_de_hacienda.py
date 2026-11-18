@@ -193,7 +193,7 @@ div.stButton > button:hover {
 }
 </style>""", unsafe_allow_html=True)
 
-# --- ILUSTRACIONES VECTORIALES EN UNA SOLA LÍNEA (EVITA QUE MARKDOWN LAS CONVIERTA EN CÓDIGO) ---
+# --- ILUSTRACIONES VECTORIALES EN UNA SOLA LÍNEA ---
 SVG_TRACTOR_HEADER = '<svg width="96" height="58" viewBox="0 0 130 78" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="66" cy="72" rx="56" ry="3.5" fill="#0D3322" fill-opacity="0.35"/><rect x="6" y="34" width="42" height="24" rx="3" fill="#A5D6A7" stroke="#1B5E20" stroke-width="1.8"/><line x1="16" y1="34" x2="16" y2="58" stroke="#2E7D32" stroke-width="1.5"/><line x1="27" y1="34" x2="27" y2="58" stroke="#2E7D32" stroke-width="1.5"/><line x1="38" y1="34" x2="38" y2="58" stroke="#2E7D32" stroke-width="1.5"/><path d="M9 34 Q18 24 28 31 Q37 23 46 34 Z" fill="#DCE775"/><line x1="48" y1="54" x2="58" y2="54" stroke="#E8F5E9" stroke-width="2.5"/><circle cx="17" cy="62" r="7.5" fill="#263238" stroke="#E8F5E9" stroke-width="1.5"/><circle cx="17" cy="62" r="3" fill="#FBC02D"/><circle cx="37" cy="62" r="7.5" fill="#263238" stroke="#E8F5E9" stroke-width="1.5"/><circle cx="37" cy="62" r="3" fill="#FBC02D"/><path d="M62 20 H83 L87 38 H60 Z" fill="#E8F5E9" stroke="#1B5E20" stroke-width="1.8"/><rect x="65" y="23" width="15" height="12" rx="1.5" fill="#81C784"/><rect x="59" y="16" width="27" height="4" rx="2" fill="#FBC02D"/><path d="M85 35 H111 C114 35 116 37 116 40 V52 H85 Z" fill="#FBC02D" stroke="#1B5E20" stroke-width="1.6"/><path d="M96 35 V23 L100 20" stroke="#E8F5E9" stroke-width="2.4" stroke-linecap="round"/><circle cx="71" cy="56" r="14" fill="#263238" stroke="#E8F5E9" stroke-width="2"/><circle cx="71" cy="56" r="6" fill="#FBC02D"/><circle cx="107" cy="60" r="9.5" fill="#263238" stroke="#E8F5E9" stroke-width="1.8"/><circle cx="107" cy="60" r="4" fill="#FBC02D"/></svg>'
 
 SVG_CANITAS_COMPACT = '<svg width="46" height="56" viewBox="0 0 90 110" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 38 C14 28, 6 34, 4 44 C14 38, 24 38, 32 43 Z" fill="#A5D6A7"/><path d="M32 62 C12 54, 4 62, 2 72 C13 64, 23 64, 32 68 Z" fill="#81C784"/><rect x="30" y="14" width="9" height="86" rx="4" fill="#C5E1A5" stroke="#558B2F" stroke-width="1.5"/><line x1="30" y1="34" x2="39" y2="34" stroke="#33691E" stroke-width="2.5"/><line x1="30" y1="56" x2="39" y2="56" stroke="#33691E" stroke-width="2.5"/><line x1="30" y1="78" x2="39" y2="78" stroke="#33691E" stroke-width="2.5"/><path d="M34 16 C26 4, 16 4, 10 10 C19 9, 27 12, 33 19 Z" fill="#AED581"/><path d="M54 12 C64 2, 76 3, 82 10 C72 8, 63 10, 55 16 Z" fill="#AED581"/><path d="M56 44 C74 34, 84 40, 86 50 C76 44, 66 44, 56 49 Z" fill="#A5D6A7"/><path d="M56 70 C76 62, 84 70, 86 80 C75 72, 65 72, 56 76 Z" fill="#81C784"/><rect x="48" y="8" width="10" height="92" rx="4.5" fill="#DCE775" stroke="#689F38" stroke-width="1.5"/><line x1="48" y1="28" x2="58" y2="28" stroke="#33691E" stroke-width="2.5"/><line x1="48" y1="50" x2="58" y2="50" stroke="#33691E" stroke-width="2.5"/><line x1="48" y1="72" x2="58" y2="72" stroke="#33691E" stroke-width="2.5"/></svg>'
@@ -208,12 +208,14 @@ def get_base64_image(image_path):
             return base64.b64encode(img_file.read()).decode()
     return None
 
-def format_excel_hms(total_minutes):
-    sign = "-" if total_minutes < 0 else ""
-    abs_sec = int(round(abs(total_minutes) * 60))
-    hours = abs_sec // 3600
-    minutes = (abs_sec % 3600) // 60
-    seconds = abs_sec % 60
+def fmt_excel_hms(days_val):
+    """Formatea una fracción de día exactamente como h:mm:ss en Excel."""
+    total_sec = int(round(days_val * 86400))
+    sign = "-" if total_sec < 0 else ""
+    s = abs(total_sec)
+    hours = s // 3600
+    minutes = (s % 3600) // 60
+    seconds = s % 60
     return f"{sign}{hours}:{minutes:02d}:{seconds:02d}"
 
 # --- ENCABEZADO CON LOGO + TÍTULO + TRACTOR Y CAÑITAS ---
@@ -240,10 +242,10 @@ with col_izq:
     with st.container(border=True):
         v1, v2 = st.columns(2)
         with v1:
-            distancia_km = st.number_input("Distancia traslado (km)", min_value=0.0, value=45.0, step=1.0, format="%.2f")
+            distancia_km = st.number_input("Distancia traslado (km)", min_value=0.0, value=60.0, step=1.0, format="%.2f")
         with v2:
-            despacho_prom = st.number_input("Despacho prom/hora", min_value=0.1, value=75.0, step=1.0, format="%.2f")
-        toneladas_disp = st.number_input("Toneladas disponibles", min_value=0.0, value=1200.0, step=10.0, format="%.2f")
+            despacho_prom = st.number_input("Despacho prom/hora", min_value=0.1, value=100.0, step=1.0, format="%.2f")
+        toneladas_disp = st.number_input("Toneladas disponibles", min_value=0.0, value=300.0, step=10.0, format="%.2f")
 
     colombia_tz = datetime.timezone(datetime.timedelta(hours=-5))
     now_live = datetime.datetime.now(colombia_tz)
@@ -265,48 +267,58 @@ with col_izq:
             if st.button("🔄 Actualizar"):
                 st.rerun()
 
-# --- CÁLCULOS EXACTOS DEL MODELO QUE SÍ DABA ---
-# 1. Horas de caña disponibles = Toneladas / Despacho
-horas_cana_disp = toneladas_disp / despacho_prom
-
-# 2. Paradas técnicas = INT((Distancia / 20) - 1)
+# --- CÁLCULOS 100% IDÉNTICOS AL EXCEL (CON FORMATOS EN HORAS h:mm:ss) ---
+# 1. Paradas tecnicas (C17): =INT((B14/20)-1)
 paradas_tecnicas = math.floor((distancia_km / 20.0) - 1.0)
 
-# 3. Tiempo de parada técnica = Paradas técnicas * 10 minutos
-tiempo_parada_min = paradas_tecnicas * 10
-tiempo_parada_hms = format_excel_hms(tiempo_parada_min)
+# 2. Tiempo de parada técnica (C13): =((C17*10)/(24*60)) [en días, formato h:mm:ss]
+tiempo_parada_dias = (paradas_tecnicas * 10.0) / (24.0 * 60.0)
+tiempo_parada_hms = fmt_excel_hms(tiempo_parada_dias)
 
-# 4. Tiempo de traslados horas = (Distancia / 20) + (Paradas técnicas * 10 / 60)
-tiempo_traslado_base_horas = distancia_km / 20.0
-tiempo_traslado_horas = tiempo_traslado_base_horas + (tiempo_parada_min / 60.0)
+# 3. Horas de caña disponibles (C15): =(B18/B16)/24 [en días, formato h:mm:ss]
+horas_cana_num = toneladas_disp / despacho_prom
+horas_cana_dias = horas_cana_num / 24.0
+horas_cana_hms = fmt_excel_hms(horas_cana_dias)
 
-# 5. Horarios estimados
-hora_final_estimada = now + datetime.timedelta(hours=(horas_cana_disp - 2.0))
-hora_inicio = hora_final_estimada - datetime.timedelta(hours=tiempo_traslado_horas)
-hora_llegada_apoyo = hora_inicio - datetime.timedelta(minutes=30)
+# 4. Tiempo de traslado horas (C19): =(B14/20)/24 + C13 [en días, formato h:mm:ss]
+tiempo_traslado_dias = ((distancia_km / 20.0) / 24.0) + tiempo_parada_dias
+tiempo_traslado_hms = fmt_excel_hms(tiempo_traslado_dias)
+
+# 5. Hora final estimada (D18): =NOW() + (C15*24 - 2)/24
+hora_final_estimada = now + datetime.timedelta(days=(horas_cana_dias * 24.0 - 2.0) / 24.0)
+
+# 6. Hora de inicio (D16): =D18 - C19/24 - C13
+hora_inicio = (
+    hora_final_estimada
+    - datetime.timedelta(days=tiempo_traslado_dias / 24.0)
+    - datetime.timedelta(days=tiempo_parada_dias)
+)
+
+# 7. Hora llegada apoyo (D14): =D16 - 1/48
+hora_llegada_apoyo = hora_inicio - datetime.timedelta(days=1.0 / 48.0)
 
 with col_der:
     st.markdown('<div class="sec-header-amarillo">🟡 3. Resultados del Modelo</div>', unsafe_allow_html=True)
     with st.container(border=True):
         r1_c1, r1_c2 = st.columns(2)
         with r1_c1:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Tiempo de parada tecnica</div><div class="kpi-value">{tiempo_parada_min} min</div><div class="kpi-sub">Formato Excel: {tiempo_parada_hms}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Tiempo de parada tecnica</div><div class="kpi-value">{tiempo_parada_hms}</div><div class="kpi-sub">Formato Excel h:mm:ss ({paradas_tecnicas * 10} min)</div></div>', unsafe_allow_html=True)
         with r1_c2:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Horas de caña disponibles</div><div class="kpi-value">{horas_cana_disp:.2f}</div><div class="kpi-sub">horas disponibles</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Horas de caña disponibles</div><div class="kpi-value">{horas_cana_hms}</div><div class="kpi-sub">Formato Excel h:mm:ss ({horas_cana_num:.2f} h)</div></div>', unsafe_allow_html=True)
 
         r2_c1, r2_c2 = st.columns(2)
         with r2_c1:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Paradas tecnicas</div><div class="kpi-value">{paradas_tecnicas}</div><div class="kpi-sub">paradas programadas</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Paradas tecnicas</div><div class="kpi-value">{paradas_tecnicas}</div><div class="kpi-sub">INT((Distancia/20)-1)</div></div>', unsafe_allow_html=True)
         with r2_c2:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Tiempo de traslados horas</div><div class="kpi-value">{tiempo_traslado_horas:.2f}</div><div class="kpi-sub">Incluye paradas ({tiempo_traslado_base_horas:.2f}h + {tiempo_parada_min}m)</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Tiempo de traslados horas</div><div class="kpi-value">{tiempo_traslado_hms}</div><div class="kpi-sub">Recorrido + paradas (h:mm:ss)</div></div>', unsafe_allow_html=True)
 
         t1, t2, t3 = st.columns(3)
         with t1:
-            st.markdown(f'<div class="time-card"><div class="kpi-title-yellow">Hora de llegada de apoyo</div><div class="time-value">{hora_llegada_apoyo.strftime("%I:%M %p")}</div><div class="time-date">{hora_llegada_apoyo.strftime("%d/%m/%Y")} ({hora_llegada_apoyo.strftime("%H:%M")})</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="time-card"><div class="kpi-title-yellow">Hora de llegada de apoyo</div><div class="time-value">{hora_llegada_apoyo.strftime("%H:%M")}</div><div class="time-date">{hora_llegada_apoyo.strftime("%d/%m/%Y %H:%M")} ({hora_llegada_apoyo.strftime("%I:%M %p")})</div></div>', unsafe_allow_html=True)
         with t2:
-            st.markdown(f'<div class="time-card"><div class="kpi-title-yellow">Hora de inicio</div><div class="time-value">{hora_inicio.strftime("%I:%M %p")}</div><div class="time-date">{hora_inicio.strftime("%d/%m/%Y")} ({hora_inicio.strftime("%H:%M")})</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="time-card"><div class="kpi-title-yellow">Hora de inicio</div><div class="time-value">{hora_inicio.strftime("%H:%M")}</div><div class="time-date">{hora_inicio.strftime("%d/%m/%Y %H:%M")} ({hora_inicio.strftime("%I:%M %p")})</div></div>', unsafe_allow_html=True)
         with t3:
-            st.markdown(f'<div class="time-card"><div class="kpi-title-yellow">Hora final estimada</div><div class="time-value">{hora_final_estimada.strftime("%I:%M %p")}</div><div class="time-date">{hora_final_estimada.strftime("%d/%m/%Y")} ({hora_final_estimada.strftime("%H:%M")})</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="time-card"><div class="kpi-title-yellow">Hora final estimada</div><div class="time-value">{hora_final_estimada.strftime("%H:%M")}</div><div class="time-date">{hora_final_estimada.strftime("%d/%m/%Y %H:%M")} ({hora_final_estimada.strftime("%I:%M %p")})</div></div>', unsafe_allow_html=True)
 
         if st.button("📤 Enviar información a Google Sheets"):
             webhook_url = "https://script.google.com/macros/s/AKfycbzyR-uC9KdNR3_Anyd6mwMvvQSqE1vkZEjwxtZdP9xKfiQorVj3i82oFOaS5wxMvk3W/exec"
@@ -319,10 +331,10 @@ with col_der:
                 distancia_km,
                 despacho_prom,
                 toneladas_disp,
-                tiempo_parada_min,
-                round(horas_cana_disp, 2),
+                tiempo_parada_hms,
+                horas_cana_hms,
                 paradas_tecnicas,
-                round(tiempo_traslado_horas, 2),
+                tiempo_traslado_hms,
                 hora_llegada_apoyo.strftime('%Y-%m-%d %H:%M:%S'),
                 hora_inicio.strftime('%Y-%m-%d %H:%M:%S'),
                 hora_final_estimada.strftime('%Y-%m-%d %H:%M:%S')
@@ -345,5 +357,5 @@ with col_der:
                 except Exception as e:
                     st.error(f"Error de conexión con Google Sheets: {e}")
 
-# --- FRANJA DECORATIVA SUTIL DE MAQUINARIA AGRÍCOLA (EN UNA LÍNEA) ---
+# --- FRANJA DECORATIVA SUTIL DE MAQUINARIA AGRÍCOLA ---
 st.markdown(f'<div class="machinery-footer">{SVG_COSECHADORA_MINI}<span class="footer-label">🌿 Traslado de Equipos y Cosechadoras • Ingenio Carmelita S.A.</span>{SVG_CAMABAJA_MINI}</div>', unsafe_allow_html=True)
