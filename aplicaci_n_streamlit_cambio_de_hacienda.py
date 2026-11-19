@@ -267,7 +267,7 @@ with col_izq:
             if st.button("🔄 Actualizar"):
                 st.rerun()
 
-# --- CÁLCULOS 100% IDÉNTICOS AL EXCEL (CON FORMATOS EN HORAS h:mm:ss) ---
+# --- CÁLCULOS 100% IDÉNTICOS AL EXCEL CORREGIDO ---
 # 1. Paradas tecnicas (C17): =INT((B14/20)-1)
 paradas_tecnicas = math.floor((distancia_km / 20.0) - 1.0)
 
@@ -287,12 +287,8 @@ tiempo_traslado_hms = fmt_excel_hms(tiempo_traslado_dias)
 # 5. Hora final estimada (D18): =NOW() + (C15*24 - 2)/24
 hora_final_estimada = now + datetime.timedelta(days=(horas_cana_dias * 24.0 - 2.0) / 24.0)
 
-# 6. Hora de inicio (D16): =D18 - C19/24 - C13
-hora_inicio = (
-    hora_final_estimada
-    - datetime.timedelta(days=tiempo_traslado_dias / 24.0)
-    - datetime.timedelta(days=tiempo_parada_dias)
-)
+# 6. Hora de inicio (D16): =D18 - C19
+hora_inicio = hora_final_estimada - datetime.timedelta(days=tiempo_traslado_dias)
 
 # 7. Hora llegada apoyo (D14): =D16 - 1/48
 hora_llegada_apoyo = hora_inicio - datetime.timedelta(days=1.0 / 48.0)
