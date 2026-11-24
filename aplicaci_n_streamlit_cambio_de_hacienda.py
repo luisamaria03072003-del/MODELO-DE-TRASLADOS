@@ -267,9 +267,9 @@ with col_izq:
             if st.button("🔄 Actualizar"):
                 st.rerun()
 
-# --- CÁLCULOS 100% IDÉNTICOS AL EXCEL (CON FORMATOS EN HORAS h:mm:ss) ---
-# 1. Paradas tecnicas (C17): =INT((B14/20)-1)
-paradas_tecnicas = math.floor((distancia_km / 20.0) - 1.0)
+# --- CÁLCULOS EXACTOS DEL MODELO ---
+# 1. Paradas tecnicas: 1 parada cada 20 km sin contar la llegada (<=20 km -> 0, 37 km -> 1, 60 km -> 2)
+paradas_tecnicas = max(0, math.ceil(round(distancia_km / 20.0, 9)) - 1)
 
 # 2. Tiempo de parada técnica (C13): =((C17*10)/(24*60)) [en días, formato h:mm:ss]
 tiempo_parada_dias = (paradas_tecnicas * 10.0) / (24.0 * 60.0)
@@ -287,12 +287,8 @@ tiempo_traslado_hms = fmt_excel_hms(tiempo_traslado_dias)
 # 5. Hora final estimada (D18): =NOW() + (C15*24 - 2)/24
 hora_final_estimada = now + datetime.timedelta(days=(horas_cana_dias * 24.0 - 2.0) / 24.0)
 
-# 6. Hora de inicio (D16): =D18 - C19/24 - C13
-hora_inicio = (
-    hora_final_estimada
-    - datetime.timedelta(days=tiempo_traslado_dias / 24.0)
-    - datetime.timedelta(days=tiempo_parada_dias)
-)
+# 6. Hora de inicio (D16): =D18 - C19
+hora_inicio = hora_final_estimada - datetime.timedelta(days=tiempo_traslado_dias)
 
 # 7. Hora llegada apoyo (D14): =D16 - 1/48
 hora_llegada_apoyo = hora_inicio - datetime.timedelta(days=1.0 / 48.0)
@@ -308,7 +304,7 @@ with col_der:
 
         r2_c1, r2_c2 = st.columns(2)
         with r2_c1:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Paradas tecnicas</div><div class="kpi-value">{paradas_tecnicas}</div><div class="kpi-sub">INT((Distancia/20)-1)</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Paradas tecnicas</div><div class="kpi-value">{paradas_tecnicas}</div><div class="kpi-sub">REDONDEAR.MAS(Distancia/20; 0) - 1</div></div>', unsafe_allow_html=True)
         with r2_c2:
             st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Tiempo de traslados horas</div><div class="kpi-value">{tiempo_traslado_hms}</div><div class="kpi-sub">Recorrido + paradas (h:mm:ss)</div></div>', unsafe_allow_html=True)
 
