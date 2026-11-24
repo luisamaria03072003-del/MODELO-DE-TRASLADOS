@@ -267,9 +267,9 @@ with col_izq:
             if st.button("🔄 Actualizar"):
                 st.rerun()
 
-# --- CÁLCULOS 100% IDÉNTICOS AL EXCEL CORREGIDO ---
-# 1. Paradas tecnicas (C17): =INT((B14/20)-1)
-paradas_tecnicas = math.floor((distancia_km / 20.0) - 1.0)
+# --- CÁLCULOS EXACTOS DEL MODELO ---
+# 1. Paradas tecnicas: 1 parada cada 20 km sin contar la llegada (<=20 km -> 0, 37 km -> 1, 60 km -> 2)
+paradas_tecnicas = max(0, math.ceil(round(distancia_km / 20.0, 9)) - 1)
 
 # 2. Tiempo de parada técnica (C13): =((C17*10)/(24*60)) [en días, formato h:mm:ss]
 tiempo_parada_dias = (paradas_tecnicas * 10.0) / (24.0 * 60.0)
@@ -304,7 +304,7 @@ with col_der:
 
         r2_c1, r2_c2 = st.columns(2)
         with r2_c1:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Paradas tecnicas</div><div class="kpi-value">{paradas_tecnicas}</div><div class="kpi-sub">INT((Distancia/20)-1)</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Paradas tecnicas</div><div class="kpi-value">{paradas_tecnicas}</div><div class="kpi-sub">REDONDEAR.MAS(Distancia/20; 0) - 1</div></div>', unsafe_allow_html=True)
         with r2_c2:
             st.markdown(f'<div class="kpi-card"><div class="kpi-title-yellow">Tiempo de traslados horas</div><div class="kpi-value">{tiempo_traslado_hms}</div><div class="kpi-sub">Recorrido + paradas (h:mm:ss)</div></div>', unsafe_allow_html=True)
 
